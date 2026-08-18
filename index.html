@@ -346,9 +346,9 @@ tr.voided td:nth-child(3),tr.voided td:nth-child(4),tr.voided td:nth-child(5){te
       <h2>しょうひんを ついか</h2>
       <div class="row">
         <input id="pName" class="grow" placeholder="しょうひん名">
-        <input id="pPrice" type="number" min="0" placeholder="ねだん" style="width:110px">
-        <input id="pStock" type="number" min="0" placeholder="ざいこ" style="width:100px">
-        <input id="pCode" placeholder="バーコード（空欄で自動）" style="width:200px">
+        <input id="pPrice" type="number" min="0" step="1" inputmode="numeric" placeholder="ねだん" style="width:110px">
+        <input id="pStock" type="number" min="0" step="1" inputmode="numeric" placeholder="ざいこ" style="width:100px">
+        <input id="pCode" inputmode="numeric" maxlength="13" placeholder="バーコード（空欄で自動）" style="width:200px">
         <button class="btn" id="addP">ついか</button>
       </div>
       <p class="tag" style="margin:10px 0 0">バーコードを空欄にすると、自動で番号を作ります。市販品はその場でスキャンして入れられます。</p>
@@ -482,6 +482,24 @@ tr.voided td:nth-child(3),tr.voided td:nth-child(4),tr.voided td:nth-child(5){te
   </div>
 </dialog>
 
+<dialog id="prodDlg">
+  <div class="pay-head" id="ePHead">しょうひんを なおす</div>
+  <div class="pay-body">
+    <label class="tag" for="ePName">しょうひん名</label>
+    <input id="ePName" style="width:100%" maxlength="40">
+    <label class="tag" for="ePPrice">ねだん（円）</label>
+    <input id="ePPrice" type="number" min="0" step="1" inputmode="numeric" style="width:100%">
+    <label class="tag" for="ePStock">ざいこ（こ）</label>
+    <input id="ePStock" type="number" min="0" step="1" inputmode="numeric" style="width:100%">
+    <label class="tag" for="ePCode">バーコード</label>
+    <input id="ePCode" inputmode="numeric" style="width:100%" maxlength="13">
+    <p class="tag" style="margin:6px 0 0">4〜13けたの数字。ほかの商品と おなじ番号には できません。</p>
+    <p class="pinmsg" id="ePMsg" style="text-align:left"></p>
+    <button class="btn big" id="ePSave">ほぞん</button>
+    <button class="btn sub" id="ePCancel" style="width:100%;margin-top:8px">やめる</button>
+  </div>
+</dialog>
+
 <dialog id="pinDlg">
   <div class="pay-head" id="pinTitle">あんしょう番号</div>
   <div class="pay-body">
@@ -593,15 +611,52 @@ function renderPList(){
 }
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
+/* 追加も編集も、必ずこの検査を通す。値段に文字・在庫にマイナス・バーコード重複を
+   ここ1か所で止めるため。新しい入口を作るときも必ずここを呼ぶこと。 */
+function checkProd(name, price, stock, code, selfId){
+  name=String(name).trim(); price=String(price).trim();
+  stock=String(stock).trim() || '0'; code=String(code).trim();
+  if(!name) return {err:'しょうひん名を 入れてください'};
+  if(!/^\d+$/.test(price)) return {err:'ねだんは 0いじょうの 数字で 入れてください'};
+  if(!/^\d+$/.test(stock)) return {err:'ざいこは 0いじょうの 数字で 入れてください'};
+  const p=+price, s=+stock;
+  if(p>1000000) return {err:'ねだんが 大きすぎます（1000000円まで）'};
+  if(s>100000)  return {err:'ざいこが 大きすぎます（100000こまで）'};
+  if(code){
+    if(!/^\d{4,13}$/.test(code)) return {err:'バーコードは 4〜13けたの 数字で 入れてください'};
+    const dup=products.find(x=>x.code===code && x.id!==selfId);
+    if(dup) return {err:'そのバーコードは「'+dup.name+'」で つかわれています'};
+  }
+  return {v:{name, price:p, stock:s, code: code||newCode()}};
+}
 $('#addP').onclick=()=>{
-  const name=$('#pName').value.trim(), price=+$('#pPrice').value, stock=+$('#pStock').value||0;
-  let code=$('#pCode').value.trim()||newCode();
-  if(!name||!(price>=0)) return alert('名前とねだんを入れてください');
-  if(products.some(p=>p.code===code)) return alert('そのバーコードは使われています');
-  products.push({id:Date.now()+'',name,price,stock,code});
+  const r=checkProd($('#pName').value,$('#pPrice').value,$('#pStock').value,$('#pCode').value,null);
+  if(r.err) return alert(r.err);
+  products.push(Object.assign({id:Date.now()+''}, r.v));
   saveP(); renderGoods(); renderPList();
   $('#pName').value=$('#pPrice').value=$('#pStock').value=$('#pCode').value='';
   $('#pName').focus();
+};
+
+/* --- 編集は専用画面で。ブラウザ標準の prompt は使わない --- */
+let editId=null;
+function openEdit(p){
+  editId=p.id;
+  $('#ePHead').textContent='「'+p.name+'」を なおす';
+  $('#ePName').value=p.name; $('#ePPrice').value=p.price;
+  $('#ePStock').value=p.stock; $('#ePCode').value=p.code;
+  $('#ePMsg').textContent='';
+  $('#prodDlg').showModal(); $('#ePName').focus();
+}
+$('#ePCancel').onclick=()=>{ editId=null; $('#prodDlg').close(); };
+$('#ePSave').onclick=()=>{
+  const p=products.find(x=>x.id===editId);
+  if(!p){ editId=null; return $('#prodDlg').close(); }
+  const r=checkProd($('#ePName').value,$('#ePPrice').value,$('#ePStock').value,$('#ePCode').value,p.id);
+  if(r.err){ $('#ePMsg').textContent=r.err; return; }
+  Object.assign(p, r.v);
+  saveP(); renderGoods(); renderPList(); renderPick();
+  editId=null; $('#prodDlg').close(); msg('しょうひんを なおしました',3000);
 };
 $('#pList').addEventListener('click',e=>{
   const tr=e.target.closest('tr'); if(!tr) return;
@@ -609,12 +664,7 @@ $('#pList').addEventListener('click',e=>{
   if(e.target.classList.contains('rm')){
     if(confirm(p.name+' をけしますか？')){ products=products.filter(x=>x!==p); saveP(); renderGoods(); renderPList(); }
   }else if(e.target.classList.contains('edit')){
-    const name=prompt('名前',p.name); if(name===null)return;
-    const price=prompt('ねだん',p.price); if(price===null)return;
-    const stock=prompt('ざいこ',p.stock); if(stock===null)return;
-    const code=prompt('バーコード',p.code); if(code===null)return;
-    Object.assign(p,{name:name.trim(),price:+price,stock:+stock,code:code.trim()});
-    saveP(); renderGoods(); renderPList();
+    openEdit(p);
   }
 });
 /* ===== カート ===== */
