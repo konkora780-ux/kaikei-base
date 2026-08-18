@@ -2,7 +2,7 @@
    役割：アプリのファイルを端末に保存しておき、ネットにつながっていなくても開けるようにする。
    方針：まず保存済みを返してすぐ表示し、裏で新しい版を取りに行く（stale-while-revalidate）。
         そのため、更新は「次に開いたとき」に反映される。 */
-const CACHE = 'kaikei-base-v2';
+const CACHE = 'kaikei-base-v3';
 const FILES = [
   './', './index.html', './manifest.webmanifest',
   './icon-192.png', './icon-512.png', './apple-touch-icon.png'

@@ -222,6 +222,14 @@ td.n,th.n{text-align:right}
 .zone.danger{background:var(--danger-l);box-shadow:inset 0 0 0 2px #F0D4D0}
 .zone h2{margin:0 0 10px}
 
+/* ---- とりけし の見せ方 ---- */
+tr.voided td{color:var(--ink-2)}
+tr.voided td:nth-child(3),tr.voided td:nth-child(4),tr.voided td:nth-child(5){text-decoration:line-through}
+.vbadge{display:inline-block;margin-left:6px;padding:2px 8px;border-radius:999px;
+  background:var(--danger-l);color:var(--danger);font-size:11px;font-weight:800;white-space:nowrap}
+.vnote{font-size:11px;color:var(--ink-2);margin-top:3px}
+.stat.warn b{color:var(--danger)}
+
 /* ---- ダークのときだけ差し替えるところ（白ベタ指定の打ち消し） ---- */
 [data-theme="dark"] .bar,
 [data-theme="dark"] .pay-head{background:linear-gradient(180deg,#144033 0%,#0D2A22 100%)}
@@ -385,6 +393,7 @@ td.n,th.n{text-align:right}
         <div class="stat"><div class="tag">売上金額</div><b class="num" id="sToday">¥0</b></div>
         <div class="stat"><div class="tag">お会計の回数</div><b class="num" id="cToday">0</b></div>
         <div class="stat"><div class="tag">売れた点数</div><b class="num" id="qToday">0</b></div>
+        <div class="stat" id="vStat"><div class="tag">とりけし</div><b class="num" id="vToday">0</b></div>
       </div>
     </div>
     <div class="card">
@@ -432,6 +441,8 @@ td.n,th.n{text-align:right}
     <input id="sShop" placeholder="〇〇支援学校" style="width:100%">
     <label class="tag" for="sTeam">作業班名</label>
     <input id="sTeam" placeholder="パン・クッキー班" style="width:100%">
+    <label class="tag" for="sStaff">そうさする先生の名前（にんい）</label>
+    <input id="sStaff" placeholder="山田" style="width:100%">
     <label class="tag" for="sFoot">レシートの下の ひとこと</label>
     <input id="sFoot" placeholder="ありがとうございました" style="width:100%">
     <label class="tag" for="sPaper">レシートの紙</label>
@@ -771,18 +782,25 @@ $('#prnLabel').onclick=()=>{ if(!$('#labels').innerHTML) return alert('先に「
 /* ===== 売上 ===== */
 function renderSales(){
   const today=new Date().toDateString();
-  const td=sales.filter(s=>new Date(s.at).toDateString()===today);
+  const all=sales.filter(s=>new Date(s.at).toDateString()===today);
+  const td=all.filter(s=>!s.void);           /* 集計は とり消していないものだけ */
+  const vd=all.filter(s=>s.void);
   $('#sToday').textContent=yen(td.reduce((a,s)=>a+s.total,0));
   $('#cToday').textContent=td.length;
   $('#qToday').textContent=td.reduce((a,s)=>a+s.items.reduce((b,i)=>b+i.qty,0),0);
-  $('#sList').innerHTML=[...sales].reverse().slice(0,200).map((s,i)=>{
-    const d=new Date(s.at);
-    return `<tr data-at="${s.at}">
-      <td class="num" style="font-size:13px">${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}</td>
-      <td style="font-size:13px">${s.items.map(i=>esc(i.name)+'×'+i.qty).join('、')}</td>
+  $('#vToday').textContent=vd.length;
+  $('#vStat').classList.toggle('warn', vd.length>0);
+  const hm=d=>`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  $('#sList').innerHTML=[...sales].reverse().slice(0,200).map(s=>{
+    const d=new Date(s.at), v=s.void;
+    return `<tr data-at="${s.at}"${v?' class="voided"':''}>
+      <td class="num" style="font-size:13px">${d.getMonth()+1}/${d.getDate()} ${hm(d)}
+        ${v?'<span class="vbadge">とりけし</span>':''}</td>
+      <td style="font-size:13px">${s.items.map(i=>esc(i.name)+'×'+i.qty).join('、')}
+        ${v?`<div class="vnote">${hm(new Date(v.at))} に ${esc(v.by||'せんせい')} が とり消し</div>`:''}</td>
       <td class="n num">${yen(s.total)}</td><td class="n num">${yen(s.recv)}</td><td class="n num">${yen(s.change)}</td>
       <td class="n"><button class="icon rcp1">レシート</button>
-        <button class="icon del rms">とり消し</button></td></tr>`;
+        ${v?'':'<button class="icon del rms">とり消し</button>'}</td></tr>`;
   }).join('') || '<tr><td colspan="6" class="empty">まだ記録がありません</td></tr>';
 }
 $('#sList').addEventListener('click',e=>{
@@ -793,14 +811,18 @@ $('#sList').addEventListener('click',e=>{
     return;
   }
   if(!e.target.classList.contains('rms')) return;
-  if(!confirm('この会計を取り消しますか？（在庫も戻します）')) return;
-  const s=sales.find(x=>x.at===at);
+  const s=sales.find(x=>x.at===at); if(!s) return;
+  if(s.void) return alert('この会計は すでに とり消してあります');
+  if(!confirm('この会計を とり消しますか？（在庫も もどします）\n\nきろくは 消えません。「とりけし」として のこります。')) return;
   /* 商品IDで照合する。IDのない古い記録だけ、これまでどおり名前で照合する */
   s.items.forEach(i=>{
     const p = (i.id && products.find(x=>x.id===i.id)) || products.find(x=>x.name===i.name);
     if(p) p.stock += (i.dec!=null ? i.dec : i.qty);
   });
-  sales=sales.filter(x=>x!==s); saveS(); saveP(); renderSales(); renderGoods(); renderPList();
+  /* 売上そのものは残し、取り消した事実を刻む。あとで売上が合わないときに原因を追えるようにするため */
+  s.void={at:new Date().toISOString(), by:(shop().staff||'せんせい')};
+  saveS(); saveP(); renderSales(); renderGoods(); renderPList();
+  msg('とり消しました（きろくは のこっています）',4000);
 });
 $('#clrS').onclick=()=>askPin('うりあげの きろくを ぜんぶ けします', ()=>{
   if(!confirm('本当に けしますか？もとに もどせません。\n先に「すべて バックアップ」をしましたか？')) return;
@@ -854,9 +876,9 @@ $('#pinChange').onclick=()=>askPin('いまの あんしょう番号を 入れて
 
 /* ===== せってい（学校名・レシートの紙など） ===== */
 const shop=()=>Object.assign(
-  {name:'',team:'',foot:'ありがとうございました',paper:'roll',auto:false}, DB.get('shop',{}));
+  {name:'',team:'',staff:'',foot:'ありがとうございました',paper:'roll',auto:false}, DB.get('shop',{}));
 function openSet(){ const c=shop();
-  $('#sShop').value=c.name; $('#sTeam').value=c.team; $('#sFoot').value=c.foot;
+  $('#sShop').value=c.name; $('#sTeam').value=c.team; $('#sStaff').value=c.staff; $('#sFoot').value=c.foot;
   $('#sPaper').value=c.paper; $('#sAuto').checked=!!c.auto; $('#setDlg').showModal(); }
 $('#setBtn').onclick=()=>{
   if(!teacher) return askPin('せっていは せんせい用です',()=>{ setTeacher(true); openSet(); });
@@ -865,6 +887,7 @@ $('#setBtn').onclick=()=>{
 $('#setClose').onclick=()=>$('#setDlg').close();
 $('#setSave').onclick=()=>{
   DB.set('shop',{name:$('#sShop').value.trim(),team:$('#sTeam').value.trim(),
+    staff:$('#sStaff').value.trim(),
     foot:$('#sFoot').value.trim(),paper:$('#sPaper').value,auto:$('#sAuto').checked});
   $('#setDlg').close(); msg('せっていを ほぞんしました',2500);
 };
@@ -883,6 +906,7 @@ function receiptHTML(s){
     <div class="tot li"><span>ごうけい</span><span>${n(s.total)}</span></div>
     <div class="li"><span>おあずかり</span><span>${n(s.recv)}</span></div>
     <div class="li" style="font-weight:700"><span>おつり</span><span>${n(s.change)}</span></div>
+    ${s.void?'<div class="sep" style="text-align:center;font-weight:700">※ この会計は とり消し済みです</div>':''}
     <div class="ft">${esc(c.foot)}</div></div>`;
 }
 function printReceipts(list){
@@ -901,7 +925,7 @@ function printReceipts(list){
 }
 $('#prnToday').onclick=()=>{
   const t=new Date().toDateString();
-  printReceipts(sales.filter(s=>new Date(s.at).toDateString()===t));
+  printReceipts(sales.filter(s=>new Date(s.at).toDateString()===t && !s.void));
 };
 
 /* ===== 書き出し／読み込み ===== */
@@ -911,10 +935,14 @@ function dl(name,text){
   a.download=name; a.click(); URL.revokeObjectURL(a.href);
 }
 $('#expS').onclick=()=>{
-  const rows=[['日時','商品','ねだん','数','小計','会計合計','預り','おつり']];
+  const rows=[['日時','商品','ねだん','数','小計','会計合計','預り','おつり',
+    '状態','取消日時','取消した人']];
   sales.forEach(s=>s.items.forEach((i,k)=>rows.push([
     new Date(s.at).toLocaleString('ja-JP'),i.name,i.price,i.qty,i.price*i.qty,
-    k?'':s.total,k?'':s.recv,k?'':s.change])));
+    k?'':s.total,k?'':s.recv,k?'':s.change,
+    k?'':(s.void?'とりけし':'有効'),
+    k||!s.void?'':new Date(s.void.at).toLocaleString('ja-JP'),
+    k||!s.void?'':(s.void.by||'せんせい')])));
   dl('uriage_'+new Date().toISOString().slice(0,10)+'.csv',
      rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n'));
 };
@@ -928,7 +956,9 @@ const BK_VER=1;
 const backupObj=()=>({
   app:'kaikei-base', format:BK_VER, savedAt:new Date().toISOString(),
   products, sales,
-  voids:DB.get('voids',[]), shop:DB.get('shop',{}),
+  voids:sales.filter(s=>s.void).map(s=>({saleAt:s.at,no:s.no,total:s.total,
+    at:s.void.at, by:s.void.by})),
+  shop:DB.get('shop',{}),
   pin:DB.get('pin',null), theme:DB.get('theme',null)
 });
 $('#bkExp').onclick=()=>{
@@ -954,7 +984,6 @@ $('#bkImp').onclick=()=>{
         +'いま入っているデータは 消えます。よろしいですか？')) return;
       products=d.products; sales=d.sales; cart=[];
       saveP(); saveS();
-      DB.set('voids', Array.isArray(d.voids)?d.voids:[]);
       if(d.shop) DB.set('shop', d.shop);
       if(d.pin) DB.set('pin', d.pin);
       if(d.theme) DB.set('theme', d.theme);
