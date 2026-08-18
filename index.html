@@ -201,6 +201,27 @@ td.n,th.n{text-align:right}
 .pick label:has(input:checked){background:var(--brand-l);box-shadow:inset 0 0 0 2px var(--brand)}
 .pick input{min-width:auto;width:18px;height:18px;padding:0;accent-color:var(--brand)}
 
+/* ---- 先生用ロック ---- */
+.lockbtn{display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.13);color:#fff;
+  padding:0 14px;height:42px;border-radius:999px;font-size:13px;font-weight:700;flex:none;margin-left:auto}
+.lockbtn:hover{background:rgba(255,255,255,.26)}
+.lockbtn[data-mode="teacher"]{background:var(--accent);color:#3B2405}
+.tabs button .lk{font-size:10px;margin-left:4px;opacity:.85}
+.tabs button .lk[hidden]{display:none}
+.keys{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}
+.keys button{height:58px;font-size:23px;font-weight:800;background:var(--surface);
+  box-shadow:var(--sh1),inset 0 0 0 2px var(--line)}
+.keys button:hover{box-shadow:var(--sh2),inset 0 0 0 2px var(--brand)}
+.keys button.act{font-size:15px;color:var(--ink-2)}
+.pindots{display:flex;gap:14px;justify-content:center;margin:10px 0 2px}
+.pindots i{width:17px;height:17px;border-radius:50%;background:var(--surface-2);
+  box-shadow:inset 0 0 0 2px var(--line)}
+.pindots i.on{background:var(--brand);box-shadow:none}
+.pinmsg{text-align:center;font-size:13px;font-weight:700;color:var(--danger);min-height:20px;margin:6px 0 0}
+.zone{margin-top:20px;padding:14px;border-radius:var(--r);background:var(--surface-2)}
+.zone.danger{background:var(--danger-l);box-shadow:inset 0 0 0 2px #F0D4D0}
+.zone h2{margin:0 0 10px}
+
 /* ---- ダークのときだけ差し替えるところ（白ベタ指定の打ち消し） ---- */
 [data-theme="dark"] .bar,
 [data-theme="dark"] .pay-head{background:linear-gradient(180deg,#144033 0%,#0D2A22 100%)}
@@ -219,6 +240,9 @@ td.n,th.n{text-align:right}
   box-shadow:var(--sh1),inset 0 0 0 2px #4A4132}
 [data-theme="dark"] .coins .c.bill{background:#2A2620;border-color:#5C5138;color:#D6C79A}
 [data-theme="dark"] .icon.del{box-shadow:inset 0 0 0 2px #4A2C28}
+[data-theme="dark"] .zone.danger{box-shadow:inset 0 0 0 2px #4A2C28}
+[data-theme="dark"] .keys button{background:var(--surface)}
+[data-theme="dark"] .lockbtn[data-mode="teacher"]{color:#2A1C05}
 [data-theme="dark"] .label{background:#fff;color:#111}
 
 @media print{ /* 画面がダークでも、印刷は必ず白地・黒文字にする */
@@ -253,7 +277,14 @@ td.n,th.n{text-align:right}
       <h1>かいけいベース</h1>
       <span class="sub">はんばい学習レジ</span>
     </div>
-    <button class="thm" id="setBtn" aria-label="せってい" title="せってい">
+    <button class="lockbtn" id="lockBtn" data-mode="student">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="4" y="10.5" width="16" height="11" rx="2.5"/><path d="M8 10.5V7a4 4 0 018 0v3.5"/>
+      </svg>
+      <span id="lockLbl">せいと</span>
+    </button>
+    <button class="thm" id="setBtn" aria-label="せってい" title="せってい" style="margin-left:0">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="3.1"/>
@@ -264,9 +295,9 @@ td.n,th.n{text-align:right}
   </div>
   <nav class="tabs" id="tabs">
     <button data-v="reji" aria-current="true">レジ</button>
-    <button data-v="shohin">しょうひん</button>
-    <button data-v="label">バーコード</button>
-    <button data-v="uriage">うりあげ</button>
+    <button data-v="shohin">しょうひん<span class="lk">🔒</span></button>
+    <button data-v="label">バーコード<span class="lk">🔒</span></button>
+    <button data-v="uriage">うりあげ<span class="lk">🔒</span></button>
   </nav>
 </header>
 
@@ -362,7 +393,6 @@ td.n,th.n{text-align:right}
         <div class="row">
           <button class="icon" id="prnToday">きょうのレシートを まとめて印刷</button>
           <button class="icon" id="expS">CSVで書き出し</button>
-          <button class="icon del" id="clrS">きろくを全部けす</button>
         </div>
       </div>
       <table><thead><tr>
@@ -415,8 +445,40 @@ td.n,th.n{text-align:right}
     </label>
     <p class="tag" style="margin:8px 0 0">レシートプリンタがないときは「ふつうの紙」を選び、
       自動印刷はオフにして、うりあげタブから必要なぶんだけ印刷してください。</p>
+    <div class="zone">
+      <h2>データの バックアップ</h2>
+      <div class="row">
+        <button class="icon grow" id="bkExp">すべて バックアップ</button>
+        <button class="icon grow" id="bkImp">すべて 復元</button>
+      </div>
+      <p class="tag" style="margin:9px 0 0">商品・売上・取消記録・設定・あんしょう番号を、1つのファイルにまとめて
+        保存します。端末を入れかえるときや、年度が変わるときに使ってください。</p>
+    </div>
+    <div class="zone">
+      <h2>あんしょう番号</h2>
+      <button class="icon" id="pinChange">あんしょう番号を かえる</button>
+      <p class="tag" style="margin:9px 0 0">先生モードに入るための4けたの番号です。児童生徒に見えないところで
+        入力してください。</p>
+    </div>
+    <div class="zone danger">
+      <h2 style="color:var(--danger)">きけんな そうさ</h2>
+      <button class="icon del" id="clrS">うりあげの きろくを ぜんぶ けす</button>
+      <p class="tag" style="margin:9px 0 0">もとに もどせません。実行するには あんしょう番号を もう一度 入れます。
+        先に「すべて バックアップ」をしておいてください。</p>
+    </div>
     <button class="btn big" id="setSave" style="margin-top:18px">ほぞん</button>
     <button class="btn sub" id="setClose" style="width:100%;margin-top:8px">とじる</button>
+  </div>
+</dialog>
+
+<dialog id="pinDlg">
+  <div class="pay-head" id="pinTitle">あんしょう番号</div>
+  <div class="pay-body">
+    <p class="tag" id="pinHelp" style="text-align:center;margin:0"></p>
+    <div class="pindots" id="pinDots"><i></i><i></i><i></i><i></i></div>
+    <p class="pinmsg" id="pinMsg"></p>
+    <div class="keys" id="pinKeys"></div>
+    <button class="btn sub" id="pinCancel" style="width:100%">やめる</button>
   </div>
 </dialog>
 
@@ -454,13 +516,45 @@ $('#themeBtn').onclick=()=>{
 };
 mqDark.addEventListener('change',()=>{ if(!DB.get('theme',null)) applyTheme(); });
 
+/* ===== 先生用ロック =====
+   児童生徒モードでは「レジ」しか開けない。商品の変更・売上の取消・設定は先生モードだけ。
+   あんしょう番号は誤操作を止めるための仕切りであり、本気の解析を防ぐ強度はない。 */
+const LOCKED={shohin:1,label:1,uriage:1};
+let teacher=false, idleT=null;
+const pinHash=s=>{ let x=2166136261; const t='kaikei-base.'+s;
+  for(let i=0;i<t.length;i++){ x^=t.charCodeAt(i); x=Math.imul(x,16777619); }
+  return (x>>>0).toString(36); };
+const pinSet=()=>DB.get('pin',null)!==null;
+
+function bumpIdle(){ clearTimeout(idleT);
+  /* 先生モードのまま置き忘れても、5分で自動的に児童生徒モードへ戻す */
+  idleT=setTimeout(()=>{ setTeacher(false); msg('せんせいモードを じどうで おわりました',6000); },300000); }
+function setTeacher(on){
+  teacher=on;
+  $('#lockBtn').dataset.mode = on?'teacher':'student';
+  $('#lockLbl').textContent = on?'せんせい':'せいと';
+  $$('#tabs button').forEach(b=>{ const s=b.querySelector('.lk');
+    if(s) s.hidden = !(LOCKED[b.dataset.v] && !on); });
+  clearTimeout(idleT);
+  if(on) bumpIdle(); else if(LOCKED[curTab()]) gotoTab('reji');
+}
+document.addEventListener('click',()=>{ if(teacher) bumpIdle(); });
+
 /* ===== タブ切り替え ===== */
+function gotoTab(v){
+  $$('#tabs button').forEach(x=>x.setAttribute('aria-current', x.dataset.v===v));
+  $$('main > section').forEach(s=>s.hidden = s.id!=='v-'+v);
+  if(v==='label') renderPick();
+  if(v==='uriage') renderSales();
+}
+const curTab=()=>{ const b=$$('#tabs button').find(x=>x.getAttribute('aria-current')==='true');
+  return b?b.dataset.v:'reji'; };
 $('#tabs').addEventListener('click',e=>{
   const b=e.target.closest('button'); if(!b) return;
-  $$('#tabs button').forEach(x=>x.setAttribute('aria-current',x===b));
-  $$('main > section').forEach(s=>s.hidden = s.id!=='v-'+b.dataset.v);
-  if(b.dataset.v==='label') renderPick();
-  if(b.dataset.v==='uriage') renderSales();
+  const v=b.dataset.v;
+  if(LOCKED[v] && !teacher)
+    return askPin('この画面は せんせい用です', ()=>{ setTeacher(true); gotoTab(v); });
+  gotoTab(v);
 });
 
 /* ===== 商品 ===== */
@@ -708,14 +802,66 @@ $('#sList').addEventListener('click',e=>{
   });
   sales=sales.filter(x=>x!==s); saveS(); saveP(); renderSales(); renderGoods(); renderPList();
 });
-$('#clrS').onclick=()=>{ if(confirm('売上の記録をすべて消しますか？')){sales=[];saveS();renderSales();} };
+$('#clrS').onclick=()=>askPin('うりあげの きろくを ぜんぶ けします', ()=>{
+  if(!confirm('本当に けしますか？もとに もどせません。\n先に「すべて バックアップ」をしましたか？')) return;
+  sales=[]; saveS(); renderSales(); msg('うりあげの きろくを けしました',4000);
+}, 'check');
+
+/* ===== あんしょう番号の入力 ===== */
+let pinBuf='', pinCb=null, pinMode='check';
+const drawDots=()=>$$('#pinDots i').forEach((d,i)=>d.classList.toggle('on', i<pinBuf.length));
+function askPin(help, cb, force){
+  /* まだ番号を決めていなければ、最初に決めてもらう */
+  pinMode = force || (pinSet()?'check':'new');
+  pinBuf=''; pinCb=cb||null;
+  $('#pinTitle').textContent = pinMode==='new' ? 'あんしょう番号を きめる' : 'あんしょう番号';
+  $('#pinHelp').textContent = pinMode==='new'
+    ? '4けたの数字を きめてください。先生だけが 知っている番号にします。' : (help||'');
+  $('#pinMsg').textContent=''; drawDots();
+  if(!$('#pinDlg').open) $('#pinDlg').showModal();
+}
+$('#pinKeys').innerHTML = [1,2,3,4,5,6,7,8,9].map(d=>`<button data-k="${d}">${d}</button>`).join('')
+  + '<button class="act" data-k="del">けす</button><button data-k="0">0</button>'
+  + '<button class="act" data-k="ok">OK</button>';
+$('#pinKeys').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  const k=b.dataset.k;
+  if(k==='ok') return submitPin();
+  if(k==='del') pinBuf=pinBuf.slice(0,-1);
+  else if(pinBuf.length<4) pinBuf+=k;
+  $('#pinMsg').textContent=''; drawDots();
+  if(pinBuf.length===4 && k!=='del') setTimeout(submitPin,140);
+});
+function submitPin(){
+  if(pinBuf.length!==4){ $('#pinMsg').textContent='4けた 入れてください'; return; }
+  if(pinMode==='new'){
+    DB.set('pin', pinHash(pinBuf)); $('#pinDlg').close();
+    msg('あんしょう番号を きめました',3000);
+  } else {
+    if(pinHash(pinBuf)!==DB.get('pin',null)){
+      pinBuf=''; drawDots(); $('#pinMsg').textContent='ちがいます'; return; }
+    $('#pinDlg').close();
+  }
+  const cb=pinCb; pinCb=null; if(cb) cb();
+}
+$('#pinCancel').onclick=()=>{ pinCb=null; $('#pinDlg').close(); };
+$('#lockBtn').onclick=()=>{
+  if(teacher){ setTeacher(false); msg('せいとモードに もどりました',2500); return; }
+  askPin('せんせいモードに します', ()=>setTeacher(true));
+};
+$('#pinChange').onclick=()=>askPin('いまの あんしょう番号を 入れてください',
+  ()=>askPin('', null, 'new'), 'check');
 
 /* ===== せってい（学校名・レシートの紙など） ===== */
 const shop=()=>Object.assign(
   {name:'',team:'',foot:'ありがとうございました',paper:'roll',auto:false}, DB.get('shop',{}));
-$('#setBtn').onclick=()=>{ const c=shop();
+function openSet(){ const c=shop();
   $('#sShop').value=c.name; $('#sTeam').value=c.team; $('#sFoot').value=c.foot;
-  $('#sPaper').value=c.paper; $('#sAuto').checked=!!c.auto; $('#setDlg').showModal(); };
+  $('#sPaper').value=c.paper; $('#sAuto').checked=!!c.auto; $('#setDlg').showModal(); }
+$('#setBtn').onclick=()=>{
+  if(!teacher) return askPin('せっていは せんせい用です',()=>{ setTeacher(true); openSet(); });
+  openSet();
+};
 $('#setClose').onclick=()=>$('#setDlg').close();
 $('#setSave').onclick=()=>{
   DB.set('shop',{name:$('#sShop').value.trim(),team:$('#sTeam').value.trim(),
@@ -773,6 +919,53 @@ $('#expS').onclick=()=>{
      rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n'));
 };
 $('#expP').onclick=()=>dl('shohin.json',JSON.stringify(products,null,1));
+
+/* ===== まるごとバックアップ／復元 =====
+   端末の入れかえ・年度更新・iPadのデータ消去にそなえて、
+   商品・売上・取消記録・設定・あんしょう番号を1ファイルにまとめる。
+   format は読み込み側の互換性判定に使うので、中身を変えたら必ず上げること。 */
+const BK_VER=1;
+const backupObj=()=>({
+  app:'kaikei-base', format:BK_VER, savedAt:new Date().toISOString(),
+  products, sales,
+  voids:DB.get('voids',[]), shop:DB.get('shop',{}),
+  pin:DB.get('pin',null), theme:DB.get('theme',null)
+});
+$('#bkExp').onclick=()=>{
+  const d=new Date(), p=n=>String(n).padStart(2,'0');
+  dl(`かいけいベース_バックアップ_${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}.json`,
+     JSON.stringify(backupObj(),null,1));
+  msg('バックアップを 書き出しました',3500);
+};
+$('#bkImp').onclick=()=>{
+  const f=document.createElement('input'); f.type='file'; f.accept='.json,application/json';
+  f.onchange=()=>{
+    const r=new FileReader();
+    r.onload=()=>{
+      let d; try{ d=JSON.parse(r.result); }catch(e){ return alert('このファイルは読めませんでした'); }
+      if(!d || d.app!=='kaikei-base' || !Array.isArray(d.products) || !Array.isArray(d.sales))
+        return alert('かいけいベースの バックアップファイルでは ありません');
+      if(d.format>BK_VER)
+        return alert('新しい版で作られたバックアップです。アプリを最新にしてから もう一度お試しください');
+      const when = d.savedAt ? new Date(d.savedAt).toLocaleString('ja-JP') : '不明';
+      if(!confirm('このバックアップに 入れかえます。\n\n'
+        +'保存日　'+when+'\n商品　'+d.products.length+'件\n'
+        +'うりあげ　'+d.sales.length+'件\n\n'
+        +'いま入っているデータは 消えます。よろしいですか？')) return;
+      products=d.products; sales=d.sales; cart=[];
+      saveP(); saveS();
+      DB.set('voids', Array.isArray(d.voids)?d.voids:[]);
+      if(d.shop) DB.set('shop', d.shop);
+      if(d.pin) DB.set('pin', d.pin);
+      if(d.theme) DB.set('theme', d.theme);
+      applyTheme(); renderGoods(); renderPList(); renderCart(); renderSales();
+      setTeacher(false); $('#setDlg').close();
+      alert('復元しました。あんしょう番号も バックアップした時点のものに もどっています。');
+    };
+    r.readAsText(f.files[0]);
+  };
+  f.click();
+};
 $('#impP').onclick=()=>{
   const f=document.createElement('input'); f.type='file'; f.accept='.json';
   f.onchange=()=>{ const r=new FileReader();
@@ -788,7 +981,7 @@ $('#impP').onclick=()=>{
 };
 
 /* ===== 起動 ===== */
-applyTheme(); renderGoods(); renderPList(); renderCart(); setMode('reader');
+applyTheme(); setTeacher(false); renderGoods(); renderPList(); renderCart(); setMode('reader');
 
 /* ===== オフライン対応（サービスワーカー＝アプリを端末に保存しておく仕組み） ===== */
 if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost')){
